@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 import useLatest from "./useLatest";
 import _debounce from "./debounce";
+import useUncontrolled from "./use-uncontrolled";
 
 export interface HookArgs {
   requestOptions?: Omit<google.maps.places.AutocompletionRequest, "input">;
@@ -10,8 +11,10 @@ export interface HookArgs {
   cacheKey?: string;
   googleMaps?: any;
   callbackName?: string;
-  defaultValue?: string;
   initOnMount?: boolean;
+  value?: string;
+  onChange?: (value: string) => void;
+  defaultValue?: string;
 }
 
 type Suggestion = google.maps.places.AutocompletePrediction;
@@ -48,11 +51,19 @@ const usePlacesAutocomplete = ({
   cacheKey = "upa",
   googleMaps,
   callbackName,
+  value,
   defaultValue = "",
+  onChange,
   initOnMount = true,
 }: HookArgs = {}): HookReturn => {
   const [ready, setReady] = useState(false);
-  const [value, setVal] = useState(defaultValue);
+  const [_value, handleChange] = useUncontrolled({
+    value,
+    defaultValue,
+    finalValue: "",
+    onChange,
+  });
+
   const [suggestions, setSuggestions] = useState<Suggestions>({
     loading: false,
     status: "",
@@ -157,10 +168,10 @@ const usePlacesAutocomplete = ({
 
   const setValue: SetValue = useCallback(
     (val, shouldFetchData = true) => {
-      setVal(val);
+      handleChange(val);
       if (asRef.current && shouldFetchData) fetchPredictions(val);
     },
-    [fetchPredictions]
+    [fetchPredictions, handleChange]
   );
 
   useEffect(() => {
@@ -182,7 +193,7 @@ const usePlacesAutocomplete = ({
 
   return {
     ready,
-    value,
+    value: _value,
     suggestions,
     setValue,
     clearSuggestions,
